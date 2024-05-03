@@ -21,7 +21,10 @@ amdGPUs() {
         return
     fi
     GPU_LIST=(
+        "gfx803"
         "gfx900"
+        "gfx902"
+        "gfx904"
         "gfx906:xnack-"
         "gfx908:xnack-"
         "gfx90a:xnack+"
@@ -30,11 +33,17 @@ amdGPUs() {
         "gfx941"
         "gfx942"
         "gfx1010"
+        "gfx1011"
         "gfx1012"
         "gfx1030"
+        "gfx1031"
+        "gfx1032"
+        "gfx1034"
+        "gfx1035" 
         "gfx1100"
         "gfx1101"
         "gfx1102"
+        "gfx1103"
     )
     (
         IFS=$';'
