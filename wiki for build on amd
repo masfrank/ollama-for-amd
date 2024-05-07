@@ -1,0 +1,46 @@
+###download 
+
+Make preparation as guide on (Development) [https://github.com/ollama/ollama/blob/main/docs/development.md]
+run 
+	$env:CGO_ENABLED="1"
+	go generate ./...
+
+###edit 
+Then edit the file https://github.com/ollama/ollama/blob/main/llm/generate/gen_windows.ps1
+add your gpu on the gpu list.
+
+official support list   "gfx900"   "gfx906:xnack-"   "gfx908:xnack-" "gfx90a:xnack+" "gfx90a:xnack-"   "gfx940" "gfx941"  "gfx942"    "gfx1010""gfx1012"  "gfx1030" "gfx1100""gfx1101" "gfx1102"
+
+example extra list add on this repo. 
+
+"gfx803" "gfx902"  "gfx904""gfx940" "gfx941" "gfx942" "gfx1010" "gfx1011" "gfx1012" "gfx1030" "gfx1031"  "gfx1032""gfx1034" "gfx1035" "gfx1036" "gfx1103" 
+
+
+### Rocblas support
+Make sure your have Hip SDK availble and have rocblas supported .
+if not try to build the rocblas or download somewhere on github or build yourself 
+
+(learn how to build rocblas)[https://github.com/likelovewant/stable-diffusion-webui-forge-on-amd#extra-if-you-do-not-need-build-roclabs-or-already-have-library-please-skip-this-]
+
+
+Availbe rocblas for gfx803、gfx900、gfx1010、gfx1031、gfx1032、 gfx1032、 gfx1103 on [https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU-/tree/main]
+For others , please build yourself or search from others source .
+
+Place rocblas.dll into C:\Program Files\AMD\ROCm\5.7\bin( this fold will appear after install HIP SKD ) replace the origianl one ,replace library within rocblas\library , also relace files in the ollama program folder with your rocblas.dll and library folder，eg（C:\Users\usrname\AppData\Local\Programs\Ollama\rocm） this report will not update regulary ,serve an example only .
+
+
+After done .
+
+###  Build 
+Then follow the guide(here)[https://github.com/ollama/ollama/blob/main/app/README.md]
+
+If you want to build the installer, youll need to install
+
+https://jrsoftware.org/isinfo.php
+In the top directory of this repo, run the following powershell script to build the ollama CLI, ollama app, and ollama installer.
+
+powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
+
+after done the installer will availbel in the dist folder .
+
+run the installer , its will work as exactly as the offocial release one .
