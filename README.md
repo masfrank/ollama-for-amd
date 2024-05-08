@@ -258,6 +258,7 @@ See the [API documentation](./docs/api.md) for all endpoints.
 
 - [Open WebUI](https://github.com/open-webui/open-webui)
 - [Enchanted (macOS native)](https://github.com/AugustDev/enchanted)
+- [Hollama](https://github.com/fmaclen/hollama)
 - [Lollms-Webui](https://github.com/ParisNeo/lollms-webui)
 - [LibreChat](https://github.com/danny-avila/LibreChat)
 - [Bionic GPT](https://github.com/bionic-gpt/bionic-gpt)
@@ -297,6 +298,7 @@ See the [API documentation](./docs/api.md) for all endpoints.
 - [Lobe Chat](https://github.com/lobehub/lobe-chat) with [Integrating Doc](https://lobehub.com/docs/self-hosting/examples/ollama)
 - [Ollama RAG Chatbot](https://github.com/datvodinh/rag-chatbot.git) (Local Chat with multiple PDFs using Ollama and RAG)
 - [BrainSoup](https://www.nurgo-software.com/products/brainsoup) (Flexible native client with RAG & multi-agent automation)
+- [macai](https://github.com/Renset/macai) (macOS client for Ollama, ChatGPT, and other compatible API back-ends)
 
 ### Terminal
 
@@ -350,6 +352,7 @@ See the [API documentation](./docs/api.md) for all endpoints.
 - [Haystack](https://github.com/deepset-ai/haystack-integrations/blob/main/integrations/ollama.md)
 - [Elixir LangChain](https://github.com/brainlid/langchain)
 - [Ollama for R - rollama](https://github.com/JBGruber/rollama)
+- [Ollama for R - ollama-r](https://github.com/hauselin/ollama-r)
 - [Ollama-ex for Elixir](https://github.com/lebrunel/ollama-ex)
 - [Ollama Connector for SAP ABAP](https://github.com/b-tocs/abap_btocs_ollama)
 - [Testcontainers](https://testcontainers.com/modules/ollama/)
