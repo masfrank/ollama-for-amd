@@ -1,6 +1,6 @@
 ###download 
 
-Make preparation as guide on (Development) [https://github.com/ollama/ollama/blob/main/docs/development.md]
+Make preparation as guide on [Development] (https://github.com/ollama/ollama/blob/main/docs/development.md)
 run 
 	$env:CGO_ENABLED="1"
 	go generate ./...
