@@ -61,6 +61,10 @@ func InitScheduler(ctx context.Context) *Scheduler {
 // context must be canceled to decrement ref count and release the runner
 func (s *Scheduler) GetRunner(c context.Context, model *Model, opts api.Options, sessionDuration time.Duration) (chan *runnerRef, chan error) {
 	// allocate a large enough kv cache for all parallel requests
+	if opts.NumCtx < 4 {
+		opts.NumCtx = 4
+	}
+
 	opts.NumCtx = opts.NumCtx * envconfig.NumParallel
 
 	req := &LlmRequest{
@@ -265,11 +269,14 @@ func (s *Scheduler) processCompleted(ctx context.Context) {
 
 			s.loadedMu.Lock()
 			slog.Debug("got lock to unload", "model", runner.model)
+			finished := runner.waitForVRAMRecovery()
 			runner.unload()
 			delete(s.loaded, runner.model)
 			s.loadedMu.Unlock()
 			slog.Debug("runner released", "model", runner.model)
 			runner.refMu.Unlock()
+
+			<-finished
 			slog.Debug("sending an unloaded event", "model", runner.model)
 			s.unloadedCh <- struct{}{}
 		}
@@ -465,6 +472,61 @@ func (runner *runnerRef) needsReload(ctx context.Context, req *LlmRequest) bool 
 	return false
 }
 
+// Free memory reporting on GPUs can lag for a while even after the runner
+// exits, so we have to keep checking until we see the available memory recover,
+// otherwise subsequent model loads will get far less layers loaded or worse
+// case, may completely fall back to CPU mode.
+// This routine must be called before the runner unloads so it can establish
+// a before and after GPU memory allocation.  The returned channel
+// will be notified when we're done waiting, or have timed out and should
+// proceed anyway
+func (runner *runnerRef) waitForVRAMRecovery() chan interface{} {
+	finished := make(chan interface{}, 1)
+
+	// CPU or Metal don't need checking, so no waiting required
+	if len(runner.gpus) == 1 && (runner.gpus[0].Library == "cpu" || runner.gpus[0].Library == "metal") {
+		finished <- struct{}{}
+		return finished
+	}
+	start := time.Now()
+
+	// Establish a baseline before we unload
+	gpusBefore := gpu.GetGPUInfo()
+	var totalMemoryBefore, freeMemoryBefore uint64
+	for _, gpu := range gpusBefore {
+		totalMemoryBefore += gpu.TotalMemory
+		freeMemoryBefore += gpu.FreeMemory
+	}
+	go func() {
+		expiresAt := start.Add(5 * time.Second) // typical convergence is 0.5-1.5s
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			<-ticker.C
+			if time.Now().After(expiresAt) {
+				slog.Warn("gpu VRAM usage didn't recover within timeout", "seconds", time.Since(start).Seconds())
+				finished <- struct{}{}
+			}
+
+			// Query GPUs, look for free to go back up
+			gpusNow := gpu.GetGPUInfo()
+			var totalMemoryNow, freeMemoryNow uint64
+			for _, gpu := range gpusNow {
+				totalMemoryNow += gpu.TotalMemory
+				freeMemoryNow += gpu.FreeMemory
+			}
+			// If we're within ~80% of the estimated memory usage recovered, bail out
+			if float32(freeMemoryNow-freeMemoryBefore) > float32(runner.estimatedVRAM)*0.8 {
+				slog.Debug(fmt.Sprintf("gpu VRAM free memory converged after %0.2f seconds", time.Since(start).Seconds()))
+				finished <- struct{}{}
+				return
+			}
+		}
+	}()
+	return finished
+
+}
+
 type ByDuration []*runnerRef
 
 func (a ByDuration) Len() int      { return len(a) }
@@ -505,9 +567,9 @@ func pickBestFitGPUs(req *LlmRequest, ggml *llm.GGML, gpus gpu.GpuInfoList) gpu.
 		// - try subsets of GPUs instead of just falling back to 1 or all in a family
 
 		// Now try all the GPUs
-		if ok, estimatedVRAM = llm.PredictServerFit(gl, ggml, req.model.AdapterPaths, req.model.ProjectorPaths, req.opts); ok {
-			slog.Debug("new model will fit in available VRAM, loading", "model", req.model.ModelPath, "library", gl[0].Library, "required", format.HumanBytes2(estimatedVRAM))
-			return gl
+		if ok, estimatedVRAM = llm.PredictServerFit(sgl, ggml, req.model.AdapterPaths, req.model.ProjectorPaths, req.opts); ok {
+			slog.Debug("new model will fit in available VRAM, loading", "model", req.model.ModelPath, "library", sgl[0].Library, "required", format.HumanBytes2(estimatedVRAM))
+			return sgl
 		}
 	}
 	return nil
