@@ -14,7 +14,25 @@ Get up and running with large language models locally.
 
 ### Windows preview
 
-[Download](https://ollama.com/download/OllamaSetup.exe)
+[Download](https://github.com/likelovewant/ollama-for-amd/releases)
+
+For AMD use or build , please follow the guide on [wiki](https://github.com/likelovewant/ollama-for-amd/wiki)
+
+official support list
+```
+   "gfx900"   "gfx906:xnack-"   "gfx908:xnack-" "gfx90a:xnack+" "gfx90a:xnack-"   "gfx940" "gfx941"  "gfx942"    "gfx1010""gfx1012"  "gfx1030" "gfx1100""gfx1101" "gfx1102"
+```
+Please download from ollama [official](https://ollama.com/download/OllamaSetup.exe)
+
+Example extra list add on this repo.
+```
+   "gfx803" "gfx902"  "gfx904""gfx940" "gfx941" "gfx942" "gfx1010" "gfx1011" "gfx1012"  "gfx1031"  "gfx1032""gfx1034" "gfx1035" "gfx1036" "gfx1103" 
+```
+Please follow the [wiki](https://github.com/likelovewant/ollama-for-amd/wiki) guide to build or use the pre-release version.
+
+Note: `gfx803, gfx1010` reported not working by the wiki method ,expected a future support 
+
+
 
 ### Linux
 
