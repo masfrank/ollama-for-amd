@@ -38,6 +38,7 @@ type LlamaServer interface {
 	Detokenize(ctx context.Context, tokens []int) (string, error)
 	Close() error
 	EstimatedVRAM() uint64
+	EstimatedTotal() uint64
 }
 
 // llmServer is an instance of the llama.cpp server
@@ -88,6 +89,7 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 
 		cpuRunner = serverForCpu()
 		gpuCount = 0
+		_, _, estimatedTotal = EstimateGPULayers(gpus, ggml, projectors, opts)
 	} else {
 		if gpus[0].Library == "metal" {
 			memInfo, err := gpu.GetCPUMem()
@@ -316,8 +318,22 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 		}
 
 		slog.Info("starting llama server", "cmd", s.cmd.String())
-		// Log at debug as the environment is inherited and might contain sensitive information
-		slog.Debug("subprocess", "environment", s.cmd.Env)
+		if envconfig.Debug {
+			filteredEnv := []string{}
+			for _, ev := range s.cmd.Env {
+				if strings.HasPrefix(ev, "CUDA_") ||
+					strings.HasPrefix(ev, "ROCM_") ||
+					strings.HasPrefix(ev, "HIP_") ||
+					strings.HasPrefix(ev, "HSA_") ||
+					strings.HasPrefix(ev, "GGML_") ||
+					strings.HasPrefix(ev, "PATH=") ||
+					strings.HasPrefix(ev, "LD_LIBRARY_PATH=") {
+					filteredEnv = append(filteredEnv, ev)
+				}
+			}
+			// Log at debug as the environment is inherited and might contain sensitive information
+			slog.Debug("subprocess", "environment", filteredEnv)
+		}
 
 		if err = s.cmd.Start(); err != nil {
 			// Detect permission denied and augment them essage about noexec
@@ -953,6 +969,10 @@ func (s *llmServer) Close() error {
 
 func (s *llmServer) EstimatedVRAM() uint64 {
 	return s.estimatedVRAM
+}
+
+func (s *llmServer) EstimatedTotal() uint64 {
+	return s.estimatedTotal
 }
 
 func parseDurationMs(ms float64) time.Duration {
