@@ -86,10 +86,10 @@ func AMDGetGPUInfo() []GpuInfo {
 		slog.Debug("hip device", "id", i, "name", name, "gfx", gfx)
 		//slog.Info(fmt.Sprintf("[%d] Integrated: %d", i, props.iGPU)) // DOESN'T REPORT CORRECTLY!  Always 0
 		// TODO  Why isn't props.iGPU accurate!?
-		if strings.EqualFold(name, iGPUName) {
-			slog.Info("unsupported Radeon iGPU detected skipping", "id", i, "name", name, "gfx", gfx)
-			continue
-		}
+		//if strings.EqualFold(name, iGPUName) {
+		//	slog.Info("unsupported Radeon iGPU detected skipping", "id", i, "name", name, "gfx", gfx)
+		//	continue
+		//}
 		if gfxOverride == "" {
 			if !slices.Contains[[]string, string](supported, gfx) {
 				slog.Warn("amdgpu is not supported", "gpu", i, "gpu_type", gfx, "library", libDir, "supported_types", supported)
@@ -108,10 +108,10 @@ func AMDGetGPUInfo() []GpuInfo {
 		}
 
 		// iGPU detection, remove this check once we can support an iGPU variant of the rocm library
-		if totalMemory < IGPUMemLimit {
-			slog.Info("amdgpu appears to be an iGPU, skipping", "gpu", i, "total", format.HumanBytes2(totalMemory))
-			continue
-		}
+		//if totalMemory < IGPUMemLimit {
+		//	slog.Info("amdgpu appears to be an iGPU, skipping", "gpu", i, "total", format.HumanBytes2(totalMemory))
+		//	continue
+		//}
 
 		// TODO revisit this once ROCm v6 is available on windows.
 		// v5.7 only reports VRAM used by this process, so it's completely wrong and unusable
