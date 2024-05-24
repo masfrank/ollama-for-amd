@@ -25,6 +25,7 @@ function amdGPUs {
         "gfx1030"
         "gfx1031"
         "gfx1032"
+        "gfx1033"
         "gfx1034"
         "gfx1035"
         "gfx1036"
