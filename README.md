@@ -30,7 +30,7 @@ Example extra list add on this repo.
 ```
 Please follow the [wiki](https://github.com/likelovewant/ollama-for-amd/wiki) guide to build or use the pre-release version.
 
-Note: `gfx803, gfx1010` reported not working by the wiki method ,expected a future support 
+Note: `gfx803` reported partialy working by the wiki method ,expected a future support 
 
 
 
