@@ -12,6 +12,8 @@ function amdGPUs {
         "gfx900"
         "gfx902"
         "gfx904"
+        "gfx90c"
+        "gfx906"
         "gfx906:xnack-"
         "gfx908:xnack-"
         "gfx90a:xnack+"
