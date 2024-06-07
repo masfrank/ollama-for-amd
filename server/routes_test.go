@@ -15,9 +15,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/parser"
+	"github.com/ollama/ollama/types/model"
 	"github.com/ollama/ollama/version"
 )
 
@@ -25,20 +27,20 @@ func createTestFile(t *testing.T, name string) string {
 	t.Helper()
 
 	f, err := os.CreateTemp(t.TempDir(), name)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	defer f.Close()
 
 	err = binary.Write(f, binary.LittleEndian, []byte("GGUF"))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = binary.Write(f, binary.LittleEndian, uint32(3))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = binary.Write(f, binary.LittleEndian, uint64(0))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = binary.Write(f, binary.LittleEndian, uint64(0))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	return f.Name()
 }
@@ -53,16 +55,18 @@ func Test_Routes(t *testing.T) {
 	}
 
 	createTestModel := func(t *testing.T, name string) {
+		t.Helper()
+
 		fname := createTestFile(t, "ollama-model")
 
 		r := strings.NewReader(fmt.Sprintf("FROM %s\nPARAMETER seed 42\nPARAMETER top_p 0.9\nPARAMETER stop foo\nPARAMETER stop bar", fname))
 		modelfile, err := parser.ParseFile(r)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		fn := func(resp api.ProgressResponse) {
 			t.Logf("Status: %s", resp.Status)
 		}
-		err = CreateModel(context.TODO(), name, "", "", modelfile, fn)
-		assert.Nil(t, err)
+		err = CreateModel(context.TODO(), model.ParseName(name), "", "", modelfile, fn)
+		require.NoError(t, err)
 	}
 
 	testCases := []testCase{
@@ -74,9 +78,9 @@ func Test_Routes(t *testing.T) {
 			},
 			Expected: func(t *testing.T, resp *http.Response) {
 				contentType := resp.Header.Get("Content-Type")
-				assert.Equal(t, contentType, "application/json; charset=utf-8")
+				assert.Equal(t, "application/json; charset=utf-8", contentType)
 				body, err := io.ReadAll(resp.Body)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, fmt.Sprintf(`{"version":"%s"}`, version.Version), string(body))
 			},
 		},
@@ -86,17 +90,17 @@ func Test_Routes(t *testing.T) {
 			Path:   "/api/tags",
 			Expected: func(t *testing.T, resp *http.Response) {
 				contentType := resp.Header.Get("Content-Type")
-				assert.Equal(t, contentType, "application/json; charset=utf-8")
+				assert.Equal(t, "application/json; charset=utf-8", contentType)
 				body, err := io.ReadAll(resp.Body)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				var modelList api.ListResponse
 
 				err = json.Unmarshal(body, &modelList)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				assert.NotNil(t, modelList.Models)
-				assert.Equal(t, 0, len(modelList.Models))
+				assert.Empty(t, len(modelList.Models))
 			},
 		},
 		{
@@ -108,16 +112,18 @@ func Test_Routes(t *testing.T) {
 			},
 			Expected: func(t *testing.T, resp *http.Response) {
 				contentType := resp.Header.Get("Content-Type")
-				assert.Equal(t, contentType, "application/json; charset=utf-8")
+				assert.Equal(t, "application/json; charset=utf-8", contentType)
 				body, err := io.ReadAll(resp.Body)
-				assert.Nil(t, err)
+				require.NoError(t, err)
+
+				assert.NotContains(t, string(body), "expires_at")
 
 				var modelList api.ListResponse
 				err = json.Unmarshal(body, &modelList)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
-				assert.Equal(t, 1, len(modelList.Models))
-				assert.Equal(t, modelList.Models[0].Name, "test-model:latest")
+				assert.Len(t, modelList.Models, 1)
+				assert.Equal(t, "test-model:latest", modelList.Models[0].Name)
 			},
 		},
 		{
@@ -134,7 +140,7 @@ func Test_Routes(t *testing.T) {
 					Stream:    &stream,
 				}
 				jsonData, err := json.Marshal(createReq)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				req.Body = io.NopCloser(bytes.NewReader(jsonData))
 			},
@@ -142,11 +148,11 @@ func Test_Routes(t *testing.T) {
 				contentType := resp.Header.Get("Content-Type")
 				assert.Equal(t, "application/json", contentType)
 				_, err := io.ReadAll(resp.Body)
-				assert.Nil(t, err)
-				assert.Equal(t, resp.StatusCode, 200)
+				require.NoError(t, err)
+				assert.Equal(t, 200, resp.StatusCode)
 
 				model, err := GetModel("t-bone")
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, "t-bone:latest", model.ShortName)
 			},
 		},
@@ -161,13 +167,13 @@ func Test_Routes(t *testing.T) {
 					Destination: "beefsteak",
 				}
 				jsonData, err := json.Marshal(copyReq)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				req.Body = io.NopCloser(bytes.NewReader(jsonData))
 			},
 			Expected: func(t *testing.T, resp *http.Response) {
 				model, err := GetModel("beefsteak")
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, "beefsteak:latest", model.ShortName)
 			},
 		},
@@ -179,18 +185,18 @@ func Test_Routes(t *testing.T) {
 				createTestModel(t, "show-model")
 				showReq := api.ShowRequest{Model: "show-model"}
 				jsonData, err := json.Marshal(showReq)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				req.Body = io.NopCloser(bytes.NewReader(jsonData))
 			},
 			Expected: func(t *testing.T, resp *http.Response) {
 				contentType := resp.Header.Get("Content-Type")
-				assert.Equal(t, contentType, "application/json; charset=utf-8")
+				assert.Equal(t, "application/json; charset=utf-8", contentType)
 				body, err := io.ReadAll(resp.Body)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				var showResp api.ShowResponse
 				err = json.Unmarshal(body, &showResp)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				var params []string
 				paramsSplit := strings.Split(showResp.Parameters, "\n")
@@ -221,14 +227,14 @@ func Test_Routes(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			u := httpSrv.URL + tc.Path
 			req, err := http.NewRequestWithContext(context.TODO(), tc.Method, u, nil)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			if tc.Setup != nil {
 				tc.Setup(t, req)
 			}
 
 			resp, err := httpSrv.Client().Do(req)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			defer resp.Body.Close()
 
 			if tc.Expected != nil {
