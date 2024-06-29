@@ -93,7 +93,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		//}
 		if gfxOverride == "" {
 			if !slices.Contains[[]string, string](supported, gfx) {
-				slog.Warn("amdgpu is not supported", "gpu", i, "gpu_type", gfx, "library", libDir, "supported_types", supported)
+				//slog.Warn("amdgpu is not supported", "gpu", i, "gpu_type", gfx, "library", libDir, "supported_types", supported)
 				// TODO - consider discrete markdown just for ROCM troubleshooting?
 				slog.Warn("See https://github.com/ollama/ollama/blob/main/docs/troubleshooting.md for HSA_OVERRIDE_GFX_VERSION usage")
 				continue
@@ -109,10 +109,10 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		}
 
 		// iGPU detection, remove this check once we can support an iGPU variant of the rocm library
-		if totalMemory < IGPUMemLimit {
-			slog.Info("amdgpu appears to be an iGPU, skipping", "gpu", i, "total", format.HumanBytes2(totalMemory))
-			continue
-		}
+		//if totalMemory < IGPUMemLimit {
+		//	slog.Info("amdgpu appears to be an iGPU, skipping", "gpu", i, "total", format.HumanBytes2(totalMemory))
+		//	continue
+		//}
 
 		// TODO revisit this once ROCm v6 is available on windows.
 		// v5.7 only reports VRAM used by this process, so it's completely wrong and unusable
