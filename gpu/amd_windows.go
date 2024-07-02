@@ -13,11 +13,11 @@ import (
 	"github.com/ollama/ollama/format"
 )
 
-const (
+//const (
 
 	// TODO  We're lookinng for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
-	iGPUName = "AMD Radeon(TM) Graphics"
-)
+//	iGPUName = "AMD Radeon(TM) Graphics"
+//)
 
 var (
 	// Used to validate if the given ROCm lib is usable
