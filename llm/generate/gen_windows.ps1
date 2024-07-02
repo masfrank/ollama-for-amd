@@ -20,7 +20,7 @@ function amdGPUs {
         "gfx940"
         "gfx941"
         "gfx942"
-        "gfx1010"
+        "gfx1010:xnack-"
         "gfx1011"
         "gfx1012:xnack-"
         "gfx1030"
