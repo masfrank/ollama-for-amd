@@ -26,7 +26,7 @@ Please download from ollama [official](https://ollama.com/download/OllamaSetup.e
 
 Example extra list add on this repo.
 ```
-   "gfx803" "gfx902"  "gfx904""gfx940" "gfx941" "gfx942" "gfx1010" "gfx1011" "gfx1012"  "gfx1031"  "gfx1032""gfx1034" "gfx1035" "gfx1036" "gfx1103" 
+   "gfx803" "gfx902" "gfx90c:xnack-" "gfx904" "gfx940" "gfx941" "gfx942" "gfx1010:xnack-" "gfx1011" "gfx1012:xnack-"  "gfx1031"  "gfx1032" "gfx1033" "gfx1034" "gfx1035" "gfx1036" "gfx1103" 
 ```
 Please follow the [wiki](https://github.com/likelovewant/ollama-for-amd/wiki) guide to build or use the pre-release version.
 
