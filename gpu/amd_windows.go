@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/format"
@@ -16,7 +15,7 @@ import (
 
 //const (
 
-	// TODO  We're lookinng for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
+// TODO  We're lookinng for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
 //	iGPUName = "AMD Radeon(TM) Graphics"
 //)
 
