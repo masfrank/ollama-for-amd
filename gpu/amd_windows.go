@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
-	"strings"
+	
 
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/format"
