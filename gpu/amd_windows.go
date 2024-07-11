@@ -8,16 +8,17 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/format"
 )
 
-//const (
+const (
 
-// TODO  We're lookinng for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
-//	iGPUName = "AMD Radeon(TM) Graphics"
-//)
+	// TODO  We're lookinng for this exact name to detect iGPUs since hipGetDeviceProperties never reports integrated==true
+	iGPUName = "AMD 2099 Graphics"
+)
 
 var (
 	// Used to validate if the given ROCm lib is usable
@@ -87,10 +88,10 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		slog.Debug("hip device", "id", i, "name", name, "gfx", gfx)
 		//slog.Info(fmt.Sprintf("[%d] Integrated: %d", i, props.iGPU)) // DOESN'T REPORT CORRECTLY!  Always 0
 		// TODO  Why isn't props.iGPU accurate!?
-		//if strings.EqualFold(name, iGPUName) {
-		//	slog.Info("unsupported Radeon iGPU detected skipping", "id", i, "name", name, "gfx", gfx)
-		//	continue
-		//}
+		if strings.EqualFold(name, iGPUName) {
+			slog.Info("unsupported Radeon iGPU detected skipping", "id", i, "name", name, "gfx", gfx)
+			continue
+		}
 		if gfxOverride == "" {
 			if !slices.Contains[[]string, string](supported, gfx) {
 				//slog.Warn("amdgpu is not supported", "gpu", i, "gpu_type", gfx, "library", libDir, "supported_types", supported)
@@ -109,10 +110,10 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 		}
 
 		// iGPU detection, remove this check once we can support an iGPU variant of the rocm library
-		//if totalMemory < IGPUMemLimit {
-		//	slog.Info("amdgpu appears to be an iGPU, skipping", "gpu", i, "total", format.HumanBytes2(totalMemory))
-		//	continue
-		//}
+		if totalMemory < IGPUMemLimit {
+			slog.Info("amdgpu appears to be an iGPU, skipping", "gpu", i, "total", format.HumanBytes2(totalMemory))
+			continue
+		}
 
 		slog.Debug("amdgpu memory", "gpu", i, "total", format.HumanBytes2(totalMemory))
 		slog.Debug("amdgpu memory", "gpu", i, "available", format.HumanBytes2(freeMemory))
