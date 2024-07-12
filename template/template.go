@@ -102,8 +102,22 @@ var response = parse.ActionNode{
 	},
 }
 
+var funcs = template.FuncMap{
+	// contents returns the contents of messages with an optional role filter
+	"contents": func(v []*api.Message, role ...string) string {
+		var parts []string
+		for _, m := range v {
+			if len(role) == 0 || role[0] == "" || m.Role == role[0] {
+				parts = append(parts, m.Content)
+			}
+		}
+
+		return strings.Join(parts, "\n\n")
+	},
+}
+
 func Parse(s string) (*Template, error) {
-	tmpl := template.New("").Option("missingkey=zero")
+	tmpl := template.New("").Option("missingkey=zero").Funcs(funcs)
 
 	tmpl, err := tmpl.Parse(s)
 	if err != nil {
@@ -143,53 +157,62 @@ func (t *Template) Vars() []string {
 
 type Values struct {
 	Messages []api.Message
+
+	// forceLegacy is a flag used to test compatibility with legacy templates
+	forceLegacy bool
 }
 
 func (t *Template) Execute(w io.Writer, v Values) error {
-	system, collated := collate(v.Messages)
-	if slices.Contains(t.Vars(), "messages") {
+	collated := collate(v.Messages)
+	if !v.forceLegacy && slices.Contains(t.Vars(), "messages") {
 		return t.Template.Execute(w, map[string]any{
-			"System":   system,
 			"Messages": collated,
 		})
 	}
 
 	var b bytes.Buffer
-	var prompt, response string
+	var system, prompt, response string
 	for i, m := range collated {
-		if m.Role == "user" {
+		switch m.Role {
+		case "system":
+			system = m.Content
+		case "user":
 			prompt = m.Content
-		} else {
+		case "assistant":
 			response = m.Content
 		}
 
 		if i != len(collated)-1 && prompt != "" && response != "" {
 			if err := t.Template.Execute(&b, map[string]any{
-				"System":   "",
+				"System":   system,
 				"Prompt":   prompt,
 				"Response": response,
 			}); err != nil {
 				return err
 			}
 
+			system = ""
 			prompt = ""
 			response = ""
 		}
 	}
 
 	var cut bool
-	tree := t.Template.Copy()
-	// for the last message, cut everything after "{{ .Response }}"
-	tree.Root.Nodes = slices.DeleteFunc(tree.Root.Nodes, func(n parse.Node) bool {
-		if slices.Contains(parseNode(n), "Response") {
-			cut = true
+	nodes := deleteNode(t.Template.Root.Copy(), func(n parse.Node) bool {
+		switch t := n.(type) {
+		case *parse.ActionNode:
+		case *parse.FieldNode:
+			if slices.Contains(t.Ident, "Response") {
+				cut = true
+			}
 		}
 
 		return cut
 	})
 
-	if err := template.Must(template.New("").AddParseTree("", tree)).Execute(&b, map[string]any{
-		"System": system,
+	tree := parse.Tree{Root: nodes.(*parse.ListNode)}
+	if err := template.Must(template.New("").AddParseTree("", &tree)).Execute(&b, map[string]any{
+		"System": "",
 		"Prompt": prompt,
 	}); err != nil {
 		return err
@@ -199,25 +222,14 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 	return err
 }
 
-type messages []*api.Message
-
 // collate messages based on role. consecutive messages of the same role are merged
 // into a single message. collate also pulls out and merges messages with Role == "system"
 // which are templated separately. As a side effect, it mangles message content adding image
 // tags ([img-%d]) as needed
-func collate(msgs []api.Message) (system string, collated messages) {
+func collate(msgs []api.Message) (collated []*api.Message) {
 	var n int
 	for i := range msgs {
 		msg := msgs[i]
-		if msg.Role == "system" {
-			if system != "" {
-				system += "\n\n"
-			}
-
-			system += msg.Content
-			continue
-		}
-
 		for range msg.Images {
 			imageTag := fmt.Sprintf("[img-%d]", n)
 			if !strings.Contains(msg.Content, "[img]") {
@@ -285,4 +297,73 @@ func parseNode(n parse.Node) []string {
 	}
 
 	return nil
+}
+
+// deleteNode walks the node list and deletes nodes that match the predicate
+// this is currently to remove the {{ .Response }} node from templates
+func deleteNode(n parse.Node, fn func(parse.Node) bool) parse.Node {
+	var walk func(n parse.Node) parse.Node
+	walk = func(n parse.Node) parse.Node {
+		if fn(n) {
+			return nil
+		}
+
+		switch t := n.(type) {
+		case *parse.ListNode:
+			var nodes []parse.Node
+			for _, c := range t.Nodes {
+				if n := walk(c); n != nil {
+					nodes = append(nodes, n)
+				}
+			}
+
+			t.Nodes = nodes
+			return t
+		case *parse.IfNode:
+			t.BranchNode = *(walk(&t.BranchNode).(*parse.BranchNode))
+		case *parse.WithNode:
+			t.BranchNode = *(walk(&t.BranchNode).(*parse.BranchNode))
+		case *parse.RangeNode:
+			t.BranchNode = *(walk(&t.BranchNode).(*parse.BranchNode))
+		case *parse.BranchNode:
+			t.List = walk(t.List).(*parse.ListNode)
+			if t.ElseList != nil {
+				t.ElseList = walk(t.ElseList).(*parse.ListNode)
+			}
+		case *parse.ActionNode:
+			n := walk(t.Pipe)
+			if n == nil {
+				return nil
+			}
+
+			t.Pipe = n.(*parse.PipeNode)
+		case *parse.PipeNode:
+			var commands []*parse.CommandNode
+			for _, c := range t.Cmds {
+				var args []parse.Node
+				for _, a := range c.Args {
+					if n := walk(a); n != nil {
+						args = append(args, n)
+					}
+				}
+
+				if len(args) == 0 {
+					return nil
+				}
+
+				c.Args = args
+				commands = append(commands, c)
+			}
+
+			if len(commands) == 0 {
+				return nil
+			}
+
+			t.Cmds = commands
+		}
+
+		return n
+	}
+
+	return walk(n)
 }
