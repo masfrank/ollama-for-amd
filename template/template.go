@@ -102,22 +102,8 @@ var response = parse.ActionNode{
 	},
 }
 
-var funcs = template.FuncMap{
-	// contents returns the contents of messages with an optional role filter
-	"contents": func(v []*api.Message, role ...string) string {
-		var parts []string
-		for _, m := range v {
-			if len(role) == 0 || role[0] == "" || m.Role == role[0] {
-				parts = append(parts, m.Content)
-			}
-		}
-
-		return strings.Join(parts, "\n\n")
-	},
-}
-
 func Parse(s string) (*Template, error) {
-	tmpl := template.New("").Option("missingkey=zero").Funcs(funcs)
+	tmpl := template.New("").Option("missingkey=zero")
 
 	tmpl, err := tmpl.Parse(s)
 	if err != nil {
@@ -163,26 +149,19 @@ type Values struct {
 }
 
 func (t *Template) Execute(w io.Writer, v Values) error {
-	collated := collate(v.Messages)
+	system, messages := collate(v.Messages)
 	if !v.forceLegacy && slices.Contains(t.Vars(), "messages") {
 		return t.Template.Execute(w, map[string]any{
-			"Messages": collated,
+			"System":   system,
+			"Messages": messages,
 		})
 	}
 
+	system = ""
 	var b bytes.Buffer
-	var system, prompt, response string
-	for i, m := range collated {
-		switch m.Role {
-		case "system":
-			system = m.Content
-		case "user":
-			prompt = m.Content
-		case "assistant":
-			response = m.Content
-		}
-
-		if i != len(collated)-1 && prompt != "" && response != "" {
+	var prompt, response string
+	for _, m := range messages {
+		execute := func () error {
 			if err := t.Template.Execute(&b, map[string]any{
 				"System":   system,
 				"Prompt":   prompt,
@@ -194,6 +173,26 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 			system = ""
 			prompt = ""
 			response = ""
+			return nil
+		}
+
+		switch m.Role {
+		case "system":
+			if prompt != "" || response != "" {
+				if err := execute(); err != nil {
+					return err
+				}
+			}
+			system = m.Content
+		case "user":
+			if response != "" {
+				if err := execute(); err != nil {
+					return err
+				}
+			}
+			prompt = m.Content
+		case "assistant":
+			response = m.Content
 		}
 	}
 
@@ -212,7 +211,7 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 
 	tree := parse.Tree{Root: nodes.(*parse.ListNode)}
 	if err := template.Must(template.New("").AddParseTree("", &tree)).Execute(&b, map[string]any{
-		"System": "",
+		"System": system,
 		"Prompt": prompt,
 	}); err != nil {
 		return err
@@ -223,11 +222,13 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 }
 
 // collate messages based on role. consecutive messages of the same role are merged
-// into a single message. collate also pulls out and merges messages with Role == "system"
-// which are templated separately. As a side effect, it mangles message content adding image
-// tags ([img-%d]) as needed
-func collate(msgs []api.Message) (collated []*api.Message) {
+// into a single message. collate also collects and returns all system messages.
+// collate mutates message content adding image tags ([img-%d]) as needed
+func collate(msgs []api.Message) (string, []*api.Message) {
 	var n int
+
+	var system []string
+	var collated []*api.Message
 	for i := range msgs {
 		msg := msgs[i]
 		for range msg.Images {
@@ -240,6 +241,10 @@ func collate(msgs []api.Message) (collated []*api.Message) {
 			n++
 		}
 
+		if msg.Role == "system" {
+			system = append(system, msg.Content)
+		}
+
 		if len(collated) > 0 && collated[len(collated)-1].Role == msg.Role {
 			collated[len(collated)-1].Content += "\n\n" + msg.Content
 		} else {
@@ -247,7 +252,7 @@ func collate(msgs []api.Message) (collated []*api.Message) {
 		}
 	}
 
-	return
+	return strings.Join(system, "\n\n"), collated
 }
 
 func parseNode(n parse.Node) []string {
