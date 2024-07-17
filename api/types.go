@@ -47,6 +47,9 @@ type GenerateRequest struct {
 	// Prompt is the textual prompt to send to the model.
 	Prompt string `json:"prompt"`
 
+	// Suffix is the text that comes after the inserted text.
+	Suffix string `json:"suffix"`
+
 	// System overrides the model's default system message/prompt.
 	System string `json:"system"`
 
@@ -115,8 +118,6 @@ type Message struct {
 }
 
 type ToolCall struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
 	Function struct {
 		Name      string         `json:"name"`
 		Arguments map[string]any `json:"arguments"`

@@ -122,6 +122,10 @@ func (s *Server) GenerateHandler(c *gin.Context) {
 	}
 
 	caps := []Capability{CapabilityCompletion}
+	if req.Suffix != "" {
+		caps = append(caps, CapabilityInsert)
+	}
+
 	r, m, opts, err := s.scheduleRunner(c.Request.Context(), req.Model, caps, req.Options, req.KeepAlive)
 	if errors.Is(err, errCapabilityCompletion) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%q does not support generate", req.Model)})
@@ -150,19 +154,6 @@ func (s *Server) GenerateHandler(c *gin.Context) {
 
 	prompt := req.Prompt
 	if !req.Raw {
-		var msgs []api.Message
-		if req.System != "" {
-			msgs = append(msgs, api.Message{Role: "system", Content: req.System})
-		} else if m.System != "" {
-			msgs = append(msgs, api.Message{Role: "system", Content: m.System})
-		}
-
-		for _, i := range images {
-			msgs = append(msgs, api.Message{Role: "user", Content: fmt.Sprintf("[img-%d]", i.ID)})
-		}
-
-		msgs = append(msgs, api.Message{Role: "user", Content: req.Prompt})
-
 		tmpl := m.Template
 		if req.Template != "" {
 			tmpl, err = template.Parse(req.Template)
@@ -183,7 +174,26 @@ func (s *Server) GenerateHandler(c *gin.Context) {
 			b.WriteString(s)
 		}
 
-		if err := tmpl.Execute(&b, template.Values{Messages: msgs}); err != nil {
+		var values template.Values
+		if req.Suffix != "" {
+			values.Prompt = prompt
+			values.Suffix = req.Suffix
+		} else {
+			var msgs []api.Message
+			if req.System != "" {
+				msgs = append(msgs, api.Message{Role: "system", Content: req.System})
+			} else if m.System != "" {
+				msgs = append(msgs, api.Message{Role: "system", Content: m.System})
+			}
+
+			for _, i := range images {
+				msgs = append(msgs, api.Message{Role: "user", Content: fmt.Sprintf("[img-%d]", i.ID)})
+			}
+
+			values.Messages = append(msgs, api.Message{Role: "user", Content: req.Prompt})
+		}
+
+		if err := tmpl.Execute(&b, values); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -1064,6 +1074,7 @@ func (s *Server) GenerateRoutes() http.Handler {
 	// Compatibility endpoints
 	r.POST("/v1/chat/completions", openai.ChatMiddleware(), s.ChatHandler)
 	r.POST("/v1/completions", openai.CompletionsMiddleware(), s.GenerateHandler)
+	r.POST("/v1/embeddings", openai.EmbeddingsMiddleware(), s.EmbedHandler)
 	r.GET("/v1/models", openai.ListMiddleware(), s.ListModelsHandler)
 	r.GET("/v1/models/:model", openai.RetrieveMiddleware(), s.ShowModelHandler)
 
@@ -1310,7 +1321,7 @@ func (s *Server) ChatHandler(c *gin.Context) {
 		return
 	}
 
-	if req.Messages[0].Role != "system" {
+	if req.Messages[0].Role != "system" && m.System != "" {
 		req.Messages = append([]api.Message{{Role: "system", Content: m.System}}, req.Messages...)
 	}
 
@@ -1393,7 +1404,7 @@ func (s *Server) ChatHandler(c *gin.Context) {
 
 func handleScheduleError(c *gin.Context, name string, err error) {
 	switch {
-	case errors.Is(err, errRequired):
+	case errors.Is(err, errCapabilities), errors.Is(err, errRequired):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	case errors.Is(err, context.Canceled):
 		c.JSON(499, gin.H{"error": "request canceled"})
