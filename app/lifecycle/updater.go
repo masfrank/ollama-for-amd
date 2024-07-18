@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	UpdateCheckURLBase  = "https://ollama.com/api/update"
+	UpdateCheckURLBase  = "https://api.github.com/repos/likelovewant/ollama-for-amd/releases/latest"
 	UpdateDownloaded    = false
 	UpdateCheckInterval = 60 * 60 * time.Second
 )
