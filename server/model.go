@@ -311,12 +311,14 @@ func (m *Model) parseToolCalls(s string) ([]api.ToolCall, bool) {
 	}
 
 	var b bytes.Buffer
-	if err := tmpl.Execute(&b, map[string][]map[string]any{
+	if err := tmpl.Execute(&b, map[string][]api.ToolCall{
 		"ToolCalls": {
 			{
-				"Function": map[string]any{
-					"Name":      "@@name@@",
-					"Arguments": "@@arguments@@",
+				Function: api.ToolCallFunction{
+					Name: "@@name@@",
+					Arguments: api.ToolCallFunctionArguments{
+						"@@argument@@": 1,
+					},
 				},
 			},
 		},
@@ -324,7 +326,7 @@ func (m *Model) parseToolCalls(s string) ([]api.ToolCall, bool) {
 		return nil, false
 	}
 
-	var kv map[string]string
+	var kv map[string]any
 	// execute the subtree with placeholders to identify the keys
 	// trim any commands that might exist in the template
 	if err := json.Unmarshal(bytes.TrimSuffix(b.Bytes(), []byte(",")), &kv); err != nil {
@@ -334,17 +336,19 @@ func (m *Model) parseToolCalls(s string) ([]api.ToolCall, bool) {
 	// find the keys that correspond to the name and arguments fields
 	var name, arguments string
 	for k, v := range kv {
-		switch v {
-		case "@@name@@":
+		switch v.(type) {
+		case string:
 			name = k
-		case "@@arguments@@":
+		case map[string]any:
 			arguments = k
 		}
 	}
 
 	var objs []map[string]any
 	for offset := 0; offset < len(s); {
-		if err := json.NewDecoder(strings.NewReader(s[offset:])).Decode(&objs); errors.Is(err, io.EOF) {
+		var obj map[string]any
+		decoder := json.NewDecoder(strings.NewReader(s[offset:]))
+		if err := decoder.Decode(&obj); errors.Is(err, io.EOF) {
 			break
 		} else if syntax := &(json.SyntaxError{}); errors.As(err, &syntax) {
 			// skip over any syntax errors
@@ -355,8 +359,8 @@ func (m *Model) parseToolCalls(s string) ([]api.ToolCall, bool) {
 		} else if err != nil {
 			return nil, false
 		} else {
-			// break when an object is decoded
-			break
+			offset += int(decoder.InputOffset())
+			objs = append(objs, obj)
 		}
 	}
 

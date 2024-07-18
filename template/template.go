@@ -150,9 +150,9 @@ func (t *Template) Vars() []string {
 
 type Values struct {
 	Messages []api.Message
-	Tools    []api.Tool
-	Prompt   string
-	Suffix   string
+	api.Tools
+	Prompt string
+	Suffix string
 
 	// forceLegacy is a flag used to test compatibility with legacy templates
 	forceLegacy bool
@@ -217,6 +217,7 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 			"System":   system,
 			"Messages": messages,
 			"Tools":    v.Tools,
+			"Response": "",
 		})
 	}
 
@@ -270,8 +271,9 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 
 	tree := parse.Tree{Root: nodes.(*parse.ListNode)}
 	if err := template.Must(template.New("").AddParseTree("", &tree)).Execute(&b, map[string]any{
-		"System": system,
-		"Prompt": prompt,
+		"System":   system,
+		"Prompt":   prompt,
+		"Response": "",
 	}); err != nil {
 		return err
 	}
