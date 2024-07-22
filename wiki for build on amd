@@ -20,13 +20,14 @@ example extra list add on this repo.
 Make sure your have Hip SDK availble and have rocblas supported .
 if not try to build the rocblas or download somewhere on github or build yourself 
 
-(learn how to build rocblas)[https://github.com/likelovewant/stable-diffusion-webui-forge-on-amd#extra-if-you-do-not-need-build-roclabs-or-already-have-library-please-skip-this-]
+(learn how to build rocblas)[https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU/wiki]
 
 
-Availbe rocblas for gfx803、gfx900、gfx1010、gfx1031、gfx1032、 gfx1032、 gfx1103 on [https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU-/tree/main]
+Available rocblas for gfx803、gfx900、gfx1010、gfx1031、gfx1032、 gfx1032、 gfx1103 on [ Hip SDK 5.7](https://github.com/likelovewant/ROCmLibs-for-gfx1103-AMD780M-APU#:~:text=the%20released%20page%20.-,Hip%20SDK%205.7,-Hip%20SDK%206.1.2)
+
 For others , please build yourself or search from others source .
 
-Place rocblas.dll into C:\Program Files\AMD\ROCm\5.7\bin( this fold will appear after install HIP SKD ) replace the origianl one ,replace library within rocblas\library , also relace files in the ollama program folder with your rocblas.dll and library folder，eg（C:\Users\usrname\AppData\Local\Programs\Ollama\rocm） this report will not update regulary ,serve an example only .
+Place rocblas.dll into `C:\Program Files\AMD\ROCm\5.7\bin`( this fold will appear after install HIP SKD ) replace the origianl one ,replace library within rocblas\library , also relace files in the ollama program folder with your `rocblas.dll` and `library `folder，eg（C:\Users\usrname\AppData\Local\Programs\Ollama\rocm） this report will not update regulary ,serve an example only .
 
 
 After done .
