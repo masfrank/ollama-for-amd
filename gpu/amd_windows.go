@@ -92,8 +92,9 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 			continue
 		}
 		if gfxOverride == "" {
-			if !slices.Contains[[]string, string](supported, gfx) {
-				//slog.Warn("amdgpu is not supported", "gpu", i, "gpu_type", gfx, "library", libDir, "supported_types", supported)
+			// Strip off Target Features when comparing
+			if !slices.Contains[[]string, string](supported, strings.Split(gfx, ":")[0]) {
+				slog.Warn("amdgpu is not supported", "gpu", i, "gpu_type", gfx, "library", libDir, "supported_types", supported)
 				// TODO - consider discrete markdown just for ROCM troubleshooting?
 				slog.Warn("See https://github.com/ollama/ollama/blob/main/docs/troubleshooting.md for HSA_OVERRIDE_GFX_VERSION usage")
 				continue
