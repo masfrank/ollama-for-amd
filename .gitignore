@@ -4,6 +4,7 @@
 .env
 .venv
 .swp
+0
 dist
 ollama
 ggml-metal.metal
