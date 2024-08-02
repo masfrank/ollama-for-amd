@@ -24,16 +24,12 @@ function amdGPUs {
         "gfx1010:xnack-"
         "gfx1011"
         "gfx1012:xnack-"
-        "gfx1030"
         "gfx1031"
         "gfx1032"
         "gfx1033"
         "gfx1034"
         "gfx1035"
         "gfx1036"
-        "gfx1100"
-        "gfx1101"
-        "gfx1102"
         "gfx1103"
     )
     $GPU_LIST -join ';'
