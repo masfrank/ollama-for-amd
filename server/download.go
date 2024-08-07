@@ -28,8 +28,10 @@ import (
 
 const maxRetries = 6
 
-var errMaxRetriesExceeded = errors.New("max retries exceeded")
-var errPartStalled = errors.New("part stalled")
+var (
+	errMaxRetriesExceeded = errors.New("max retries exceeded")
+	errPartStalled        = errors.New("part stalled")
+)
 
 var blobDownloadManager sync.Map
 
@@ -214,6 +216,9 @@ func (b *blobDownload) run(ctx context.Context, requestURL *url.URL, opts *regis
 		return err
 	}
 	defer file.Close()
+	if err := setSparse(file); err != nil {
+		return err
+	}
 
 	_ = file.Truncate(b.Total)
 

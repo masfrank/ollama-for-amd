@@ -44,11 +44,12 @@ type LlamaServer interface {
 
 // llmServer is an instance of the llama.cpp server
 type llmServer struct {
-	port    int
-	cmd     *exec.Cmd
-	done    chan error // Channel to signal when the process exits
-	status  *StatusWriter
-	options api.Options
+	port        int
+	cmd         *exec.Cmd
+	done        chan error // Channel to signal when the process exits
+	status      *StatusWriter
+	options     api.Options
+	numParallel int
 
 	estimate    MemoryEstimate
 	totalLayers uint64
@@ -184,15 +185,15 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 
 	params := []string{
 		"--model", model,
-		"--ctx-size", fmt.Sprintf("%d", opts.NumCtx),
-		"--batch-size", fmt.Sprintf("%d", opts.NumBatch),
+		"--ctx-size", strconv.Itoa(opts.NumCtx),
+		"--batch-size", strconv.Itoa(opts.NumBatch),
 		"--embedding",
 	}
 
 	params = append(params, "--log-disable")
 
 	if opts.NumGPU >= 0 {
-		params = append(params, "--n-gpu-layers", fmt.Sprintf("%d", opts.NumGPU))
+		params = append(params, "--n-gpu-layers", strconv.Itoa(opts.NumGPU))
 	}
 
 	if envconfig.Debug() {
@@ -200,7 +201,7 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 	}
 
 	if opts.MainGPU > 0 {
-		params = append(params, "--main-gpu", fmt.Sprintf("%d", opts.MainGPU))
+		params = append(params, "--main-gpu", strconv.Itoa(opts.MainGPU))
 	}
 
 	if len(adapters) > 0 {
@@ -214,7 +215,7 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 	}
 
 	if opts.NumThread > 0 {
-		params = append(params, "--threads", fmt.Sprintf("%d", opts.NumThread))
+		params = append(params, "--threads", strconv.Itoa(opts.NumThread))
 	}
 
 	if !opts.F16KV {
@@ -256,11 +257,17 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 		params = append(params, "--mlock")
 	}
 
-	if opts.UseNUMA {
-		params = append(params, "--numa")
+	if gpu.IsNUMA() {
+		numaMode := "distribute"
+		if runtime.GOOS == "linux" {
+			if _, err := exec.LookPath("numactl"); err == nil {
+				numaMode = "numactl"
+			}
+		}
+		params = append(params, "--numa", numaMode)
 	}
 
-	params = append(params, "--parallel", fmt.Sprintf("%d", numParallel))
+	params = append(params, "--parallel", strconv.Itoa(numParallel))
 
 	if estimate.TensorSplit != "" {
 		params = append(params, "--tensor-split", estimate.TensorSplit)
@@ -337,6 +344,7 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 			status:      NewStatusWriter(os.Stderr),
 			options:     opts,
 			estimate:    estimate,
+			numParallel: numParallel,
 			sem:         semaphore.NewWeighted(int64(numParallel)),
 			totalLayers: ggml.KV().BlockCount() + 1,
 			gpus:        gpus,
@@ -425,7 +433,7 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 				if strings.Contains(s.status.LastErrMsg, "unknown model") {
 					s.status.LastErrMsg = "this model is not supported by your version of Ollama. You may need to upgrade"
 				}
-				s.done <- fmt.Errorf(s.status.LastErrMsg)
+				s.done <- errors.New(s.status.LastErrMsg)
 			} else {
 				s.done <- err
 			}
@@ -884,11 +892,14 @@ type EmbedResponse struct {
 }
 
 func (s *llmServer) Embed(ctx context.Context, input []string) (*EmbedResponse, error) {
-	if err := s.sem.Acquire(ctx, 1); err != nil {
+	// each input will use a slot, so we need to acquire the semaphore for
+	// the number of inputs up to numParallel
+	slots := int64(min(len(input), s.numParallel))
+	if err := s.sem.Acquire(ctx, slots); err != nil {
 		slog.Error("Failed to acquire semaphore", "error", err)
 		return nil, err
 	}
-	defer s.sem.Release(1)
+	defer s.sem.Release(slots)
 
 	// Make sure the server is ready
 	status, err := s.getServerStatusRetry(ctx)
