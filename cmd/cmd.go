@@ -204,6 +204,12 @@ func tempZipFiles(path string) (string, error) {
 		// safetensors files might be unresolved git lfs references; skip if they are
 		// covers model-x-of-y.safetensors, model.fp32-x-of-y.safetensors, model.safetensors
 		files = append(files, st...)
+	} else if st, _ := glob(filepath.Join(path, "adapters.safetensors"), "application/octet-stream"); len(st) > 0 {
+		// covers adapters.safetensors
+		files = append(files, st...)
+	} else if st, _ := glob(filepath.Join(path, "adapter_model.safetensors"), "application/octet-stream"); len(st) > 0 {
+		// covers adapter_model.safetensors
+		files = append(files, st...)
 	} else if pt, _ := glob(filepath.Join(path, "pytorch_model*.bin"), "application/zip"); len(pt) > 0 {
 		// pytorch files might also be unresolved git lfs references; skip if they are
 		// covers pytorch_model-x-of-y.bin, pytorch_model.fp32-x-of-y.bin, pytorch_model.bin
@@ -218,6 +224,14 @@ func tempZipFiles(path string) (string, error) {
 
 	// add configuration files, json files are detected as text/plain
 	js, err := glob(filepath.Join(path, "*.json"), "text/plain")
+	if err != nil {
+		return "", err
+	}
+	files = append(files, js...)
+
+	// bert models require a nested config.json
+	// TODO(mxyng): merge this with the glob above
+	js, err = glob(filepath.Join(path, "**/*.json"), "text/plain")
 	if err != nil {
 		return "", err
 	}
@@ -248,6 +262,11 @@ func tempZipFiles(path string) (string, error) {
 		}
 
 		zfi, err := zip.FileInfoHeader(fi)
+		if err != nil {
+			return "", err
+		}
+
+		zfi.Name, err = filepath.Rel(path, file)
 		if err != nil {
 			return "", err
 		}
