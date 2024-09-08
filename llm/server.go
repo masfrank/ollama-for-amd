@@ -98,7 +98,7 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 		systemTotalMemory = systemMemInfo.TotalMemory
 		systemFreeMemory = systemMemInfo.FreeMemory
 		systemSwapFreeMemory = systemMemInfo.FreeSwap
-		slog.Debug("system memory", "total", format.HumanBytes2(systemTotalMemory), "free", format.HumanBytes2(systemFreeMemory), "free_swap", format.HumanBytes2(systemSwapFreeMemory))
+		slog.Info("system memory", "total", format.HumanBytes2(systemTotalMemory), "free", format.HumanBytes2(systemFreeMemory), "free_swap", format.HumanBytes2(systemSwapFreeMemory))
 	}
 
 	// If the user wants zero GPU layers, reset the gpu list to be CPU/system ram info
@@ -584,8 +584,7 @@ func (s *llmServer) Ping(ctx context.Context) error {
 
 func (s *llmServer) WaitUntilRunning(ctx context.Context) error {
 	start := time.Now()
-	stallDuration := 5 * time.Minute            // If no progress happens
-	finalLoadDuration := 5 * time.Minute        // After we hit 100%, give the runner more time to come online
+	stallDuration := envconfig.LoadTimeout()    // If no progress happens
 	stallTimer := time.Now().Add(stallDuration) // give up if we stall
 
 	slog.Info("waiting for llama runner to start responding")
@@ -637,7 +636,7 @@ func (s *llmServer) WaitUntilRunning(ctx context.Context) error {
 				stallTimer = time.Now().Add(stallDuration)
 			} else if !fullyLoaded && int(s.loadProgress*100.0) >= 100 {
 				slog.Debug("model load completed, waiting for server to become available", "status", status.ToString())
-				stallTimer = time.Now().Add(finalLoadDuration)
+				stallTimer = time.Now().Add(stallDuration)
 				fullyLoaded = true
 			}
 			time.Sleep(time.Millisecond * 250)
