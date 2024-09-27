@@ -38,7 +38,7 @@ function checkEnv() {
         $script:CUDA_DIRS=$cudaList
     }
     
-    $inoSetup=(get-item "C:\Program Files*\Inno Setup*\")
+    $inoSetup = Get-Item $env:INNO_SETUP_DIR
     if ($inoSetup.length -gt 0) {
         $script:INNO_SETUP_DIR=$inoSetup[0]
     }
@@ -65,7 +65,7 @@ function checkEnv() {
 
     # Note: Windows Kits 10 signtool crashes with GCP's plugin
     if ($null -eq $env:SIGN_TOOL) {
-        ${script:SignTool}="C:\Program Files (x86)\Windows Kits\8.1\bin\x64\signtool.exe"
+        ${script:SignTool}=Get-Item $env:SIGN_TOOL
     } else {
         ${script:SignTool}=${env:SIGN_TOOL}
     }
