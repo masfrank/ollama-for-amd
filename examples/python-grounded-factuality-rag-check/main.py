@@ -9,7 +9,7 @@ import nltk
 warnings.filterwarnings(
     "ignore", category=FutureWarning, module="transformers.tokenization_utils_base"
 )
-nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 
 
 def getArticleText(url):
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         system_prompt = f"Only use the following information to answer the question. Do not use anything else: {sourcetext}"
 
         ollama_response = ollama.generate(
-            model="llama3.1",
+            model="llama3.2",
             prompt=question,
             system=system_prompt,
             options={"stream": False},
