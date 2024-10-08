@@ -123,7 +123,7 @@ function apply_patches {
 function build {
     write-host "generating config with: cmake -S ${script:llamacppDir} -B $script:buildDir $script:cmakeDefs"
     & cmake --version
-    & cmake -S "${script:llamacppDir}" -B $script:buildDir $script:cmakeDefs
+    & cmake -S "${script:llamacppDir}" -G "Visual Studio 17 2022" -B $script:buildDir $script:cmakeDefs
     if ($LASTEXITCODE -ne 0) { exit($LASTEXITCODE)}
     if ($cmakeDefs -contains "-G") {
         $extra=@("-j8")
