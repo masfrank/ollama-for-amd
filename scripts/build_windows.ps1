@@ -40,7 +40,7 @@ function checkEnv() {
     
     $inoSetup = $env:INNO_SETUP_PATH
     if ($inoSetup.length -gt 0) {
-        $script:INNO_SETUP_DIR=$inoSetup[0]
+        $script:INNO_SETUP_DIR=$inoSetup
     }
 
     $script:DIST_DIR="${script:SRC_DIR}\dist\windows-${script:TARGET_ARCH}"
